@@ -1,0 +1,8 @@
+venv_p8/
+__pycache__/
+*.pyc
+data/
+outputs/
+logs/
+*.ipynb_checkpoints
+.DS_Store

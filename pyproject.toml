@@ -1,0 +1,33 @@
+[project]
+name = "segmentation_p8"
+version = "0.1.0"
+description = "Projet P8 - Segmentation d'images avec API et UI"
+authors = [{ name="Arnaud CAILLE", email="arnaud.caille66@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+  "tensorflow==2.15.0",
+  "keras==2.15.0",
+  "scikit-learn==1.4.1.post1",
+  "opencv-python==4.9.0.80",
+  "Pillow==10.3.0",
+  "albumentations==1.4.2",
+  "matplotlib==3.8.3",
+  "numpy==1.26.4",
+  "fastapi==0.110.0",
+  "uvicorn[standard]==0.29.0",
+  "gradio==4.27.0",
+  "mlflow==2.11.3",
+  "pandas==2.2.1",
+  "tqdm==4.66.2",
+  "python-dotenv==1.0.1",
+  "pytest==8.1.1"
+]
+
+[tool.setuptools]
+packages = ["src"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

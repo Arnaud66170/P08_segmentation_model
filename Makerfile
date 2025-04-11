@@ -1,0 +1,16 @@
+install:
+	python -m venv venv_p8
+	source venv_p8/Scripts/activate && python.exe -m pip install --upgrade pip && pip install .
+
+train:
+	source venv_p8/Scripts/activate && python notebooks/02_model_training_unet.py
+
+api:
+	source venv_p8/Scripts/activate && uvicorn api.main:app --reload
+
+ui:
+	source venv_p8/Scripts/activate && python app/gradio_ui.py
+
+test:
+	source venv_p8/Scripts/activate && pytest tests/
+
