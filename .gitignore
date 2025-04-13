@@ -1,8 +1,51 @@
-venv_p8/
+# === ENVIRONNEMENT VIRTUEL ===
+venv*/
+.venv/
+.env
+.env.*
+
+# === CACHE & COMPILATION PYTHON ===
 __pycache__/
 *.pyc
-data/
-outputs/
-logs/
-*.ipynb_checkpoints
-.DS_Store
+*.pyo
+*.pyd
+
+# === NOTEBOOKS & SESSIONS ===
+.ipynb_checkpoints/
+
+# === ARTEFACTS MODELES ===
+models/*.h5
+models/*.pkl
+models/*.csv
+models/*.png
+models/*_metrics.csv
+models/*_training_plot.png
+
+# === DONNÉES GÉNÉRÉES ===
+data/processed/*.npz
+data/raw/images/
+data/raw/masks/
+data/P8_Cityscapes_gtFine_trainvaltest/
+data/P8_Cityscapes_leftImg8bit_trainvaltest/
+# === MLflow (tracking local) ===
+notebooks/mlruns/
+notebooks/mlartifacts/
+mlruns/
+mlartifacts/
+
+# === OUTPUTS VISUELS ===
+outputs/*.png
+outputs/*.pdf
+
+# === FICHIERS TEMPORAIRES OU DÉMO ===
+*.log
+*.tmp
+*.bak
+
+# === VS CODE ===
+.vscode/
+*.code-workspace
+
+# === JUPYTER EXTENSIONS ===
+.jupyter/
+.cache/
