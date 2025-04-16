@@ -1,4 +1,4 @@
-# src/model_training/train_unet.py (✅ MLflow-ready + courbes interactives + logs)
+# src/model_training/train_unet.py (✅ MLflow-ready + courbes interactives + logs robustes)
 
 import os
 import mlflow
@@ -11,6 +11,7 @@ from tensorflow import keras
 from keras import layers
 from datetime import datetime
 import joblib
+import pandas as pd
 
 # 📦 Custom generator (assume src structure)
 from data_generator.generator import CityscapesDataGenerator
@@ -97,26 +98,25 @@ def train_unet_model(X_train, Y_train, X_val, Y_val,
             "force_retrain": force_retrain
         })
 
-        history = model.fit(train_gen, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
+        history_obj = model.fit(train_gen, validation_data=val_gen, epochs=epochs, callbacks=callbacks)
 
         model.save(model_path)
-        joblib.dump(history.history, history_path)
+        joblib.dump(history_obj.history, history_path)
+        pd.DataFrame(history_obj.history).to_csv(csv_path, index=False)
 
-        import pandas as pd
-        pd.DataFrame(history.history).to_csv(csv_path, index=False)
-
-        plot_history(history, plot_path)
+        plot_history(history_obj, plot_path)
 
         mlflow.keras.log_model(model, model_name)
         mlflow.log_artifact(str(history_path))
         mlflow.log_artifact(str(plot_path))
         mlflow.log_artifact(str(csv_path))
 
-        # Logging explicite des métriques par epoch (visibles en graphe dans MLflow UI)
-        for epoch in range(len(history.history['loss'])):
-            mlflow.log_metric("loss", history.history['loss'][epoch], step=epoch)
-            mlflow.log_metric("val_loss", history.history['val_loss'][epoch], step=epoch)
-            mlflow.log_metric("accuracy", history.history['accuracy'][epoch], step=epoch)
-            mlflow.log_metric("val_accuracy", history.history['val_accuracy'][epoch], step=epoch)
+        hist = history_obj.history if hasattr(history_obj, 'history') else history_obj
 
-    return model, history
+        for epoch in range(len(hist['loss'])):
+            mlflow.log_metric("loss", hist['loss'][epoch], step=epoch)
+            mlflow.log_metric("val_loss", hist['val_loss'][epoch], step=epoch)
+            mlflow.log_metric("accuracy", hist['accuracy'][epoch], step=epoch)
+            mlflow.log_metric("val_accuracy", hist['val_accuracy'][epoch], step=epoch)
+
+    return model, hist

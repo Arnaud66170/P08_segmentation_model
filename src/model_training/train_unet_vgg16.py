@@ -99,7 +99,7 @@ def train_unet_vgg16(X_train, y_train, X_val, y_val,
     run_id = f"{model_name}_bs{batch_size}_ep{epochs}"
     start = time.time()
 
-    with mlflow.start_run(run_name=run_id):
+    with mlflow.start_run(run_name=run_id, nested=True):
         mlflow.log_params({
             "epochs": epochs,
             "batch_size": batch_size,
