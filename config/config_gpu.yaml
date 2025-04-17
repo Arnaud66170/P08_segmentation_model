@@ -1,0 +1,12 @@
+# config/config_gpu.yaml
+gpu:
+  batch_size: 4
+  set_memory_growth: true
+
+
+# Chargement dans les notebooks:
+
+# import yaml
+# with open("config/config_gpu.yaml") as f:
+#     gpu_config = yaml.safe_load(f)
+# BATCH_SIZE = gpu_config['gpu']['batch_size']

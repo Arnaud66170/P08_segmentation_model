@@ -1,95 +1,78 @@
 # src/data_generator/generator.py
 
+import os
 import numpy as np
-import albumentations as A
-from tensorflow.keras.utils import Sequence
 import cv2
+from pathlib import Path
+from tensorflow.keras.utils import Sequence
+import albumentations as A
+from albumentations.core.composition import OneOf
 
-class CityscapesDataGenerator(Sequence):
+class AlbumentationDataGenerator(Sequence):
     """
-    Générateur de données pour segmentation sémantique.
-    Il prend des arrays en entrée (X = images, Y = masks), et renvoie des batchs augmentés.
-    Compatible avec les modèles Keras. Utilise Albumentations pour la data augmentation.
+    DataGenerator compatible Keras utilisant Albumentations pour la segmentation sémantique.
+    Utilisé pour charger images + masks à la volée, avec synchronisation des augmentations.
     """
 
-    def __init__(self, X, Y, batch_size=16, img_size=(256, 256), augment=False, shuffle=True):
-        """
-        Initialise le générateur
-
-        :param X: array-like ou liste des images (déjà chargées ou paths)
-        :param Y: array-like ou liste des masks (déjà chargés ou paths)
-        :param batch_size: taille des batchs
-        :param img_size: taille des images en entrée du modèle (H, W)
-        :param augment: booléen, si True applique des transformations Albumentations
-        :param shuffle: booléen, mélange les données à chaque epoch
-        """
-        self.X = X
-        self.Y = Y
+    def __init__(self, image_dir, mask_dir, batch_size=4, img_size=(256, 256),
+                 augment=False, shuffle=True):
+        self.image_dir = Path(image_dir)
+        self.mask_dir = Path(mask_dir)
         self.batch_size = batch_size
         self.img_size = img_size
         self.augment = augment
         self.shuffle = shuffle
-        self.indices = np.arange(len(X))
 
-        # Définition des augmentations (on peut personnaliser à volonté)
-        self.transform = A.Compose([
-            A.HorizontalFlip(p=0.5),
-            A.RandomBrightnessContrast(p=0.3),
-            A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5)
-        ]) if augment else None
+        self.image_filenames = sorted([f for f in os.listdir(self.image_dir) if f.endswith('.png')])
+        self.mask_filenames = sorted([f for f in os.listdir(self.mask_dir) if f.endswith('.png')])
+        assert len(self.image_filenames) == len(self.mask_filenames), "Images et masques désalignés"
 
         self.on_epoch_end()
 
+        # Définition du pipeline d’augmentation (synchronisé image/mask)
+        self.transform = A.Compose([
+            A.HorizontalFlip(p=0.5),
+            A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=10, p=0.5),
+            OneOf([
+                A.RandomBrightnessContrast(p=0.5),
+                A.GaussNoise(p=0.5)
+            ], p=0.5)
+        ]) if self.augment else None
+
     def __len__(self):
-        """
-        Retourne le nombre total de batchs par epoch
-        """
-        return int(np.ceil(len(self.X) / self.batch_size))
+        return len(self.image_filenames) // self.batch_size
 
     def on_epoch_end(self):
-        """
-        Mélange les indices à la fin de chaque epoch si shuffle est activé
-        """
+        self.indices = np.arange(len(self.image_filenames))
         if self.shuffle:
             np.random.shuffle(self.indices)
 
     def __getitem__(self, index):
-        """
-        Renvoie un batch indexé
-        """
         batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
-        batch_X = []
-        batch_Y = []
+        X, y = self.__load_batch(batch_indices)
+        return np.array(X), np.array(y)
 
-        for i in batch_indices:
-            image = self.X[i]
-            mask = self.Y[i]
+    def __load_batch(self, batch_indices):
+        X_batch, y_batch = [], []
 
-            # Resize (sécurité)
-            image = cv2.resize(image, self.img_size, interpolation=cv2.INTER_LINEAR)
+        for idx in batch_indices:
+            image = cv2.imread(str(self.image_dir / self.image_filenames[idx]))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            mask = cv2.imread(str(self.mask_dir / self.mask_filenames[idx]), cv2.IMREAD_GRAYSCALE)
+
+            # Resize
+            image = cv2.resize(image, self.img_size)
             mask = cv2.resize(mask, self.img_size, interpolation=cv2.INTER_NEAREST)
 
-            # Appliquer augmentation (si activée)
-            if self.augment and self.transform:
-                image = image.astype(np.float32)  # ⚠️ indispensable pour Albumentations
-                transformed = self.transform(image=image, mask=mask)
-                image = transformed['image']
-                mask = transformed['mask']
+            if self.augment:
+                augmented = self.transform(image=image, mask=mask)
+                image = augmented['image']
+                mask = augmented['mask']
 
+            image = image.astype('float32') / 255.0
+            mask = mask.astype('int32')  # Assure un encodage correct
 
-            # Ajout dans la liste du batch
-            batch_X.append(image)
-            batch_Y.append(mask)
+            X_batch.append(image)
+            y_batch.append(mask)
 
-        # Conversion en tableaux numpy
-        batch_X = np.array(batch_X, dtype=np.float32)
-        batch_Y = np.array(batch_Y, dtype=np.uint8)
-
-        # Normalisation [0, 1]
-        batch_X /= 255.0
-
-        # Ajouter canal au mask si nécessaire (pour modèle à sortie binaire par pixel)
-        if len(batch_Y.shape) == 3:
-            batch_Y = np.expand_dims(batch_Y, axis=-1)
-
-        return batch_X, batch_Y
+        return X_batch, y_batch
